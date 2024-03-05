@@ -1,0 +1,49 @@
+import tensorflow as tf
+import tensorflow_quantum as tfq
+import cirq
+import sympy
+
+# Define the quantum circuit
+qubit = cirq.GridQubit(0, 0)
+circuit = cirq.Circuit(
+    cirq.H(qubit),
+    cirq.X(qubit)**sympy.Symbol('alpha'),
+)
+
+# Define the classical neural network
+inputs = tf.keras.Input(shape=(), dtype=tf.dtypes.string)
+preprocessed_inputs = tfq.layers.AddCircuit().get_quantum_circuit()(inputs)
+dense_layer = tf.keras.layers.Dense(10)(preprocessed_inputs)
+outputs = tf.keras.layers.Dense(2)(dense_layer)
+
+# Construct the quantum neural network (QNN) model
+model = tf.keras.Model(inputs=inputs, outputs=outputs)
+
+# Define the loss function and optimizer
+loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+optimizer = tf.keras.optimizers.Adam()
+
+# Compile the model
+model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+# Generate some random training data
+train_data = tfq.convert_to_tensor([
+    circuit + cirq.Z(qubit),
+    circuit + cirq.X(qubit),
+    circuit + cirq.Y(qubit),
+    circuit + cirq.Z(qubit),
+])
+train_labels = tf.convert_to_tensor([0, 1, 1, 0])
+
+# Train the model
+model.fit(train_data, train_labels, epochs=10)
+
+# Evaluate the model
+test_data = tfq.convert_to_tensor([
+    circuit + cirq.Z(qubit),
+    circuit + cirq.X(qubit),
+    circuit + cirq.Y(qubit),
+    circuit + cirq.Z(qubit),
+])
+test_labels = tf.convert_to_tensor([0, 1, 1, 0])
+model.evaluate(test_data, test_labels)
